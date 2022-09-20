@@ -1,0 +1,2 @@
+python -u render_canonical_views.py --properties_json=data/properties/kitchen_properties.json --output_image_dir=../output/objects/
+python -u render_canonical_views.py --properties_json=data/properties/properties.json --output_image_dir=../output/objects/

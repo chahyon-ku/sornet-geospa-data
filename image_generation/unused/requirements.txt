@@ -1,0 +1,19 @@
+cached-property==1.5.2
+certifi==2021.10.8
+colorama==0.4.4
+cycler==0.11.0
+fonttools==4.32.0
+h5py==3.6.0
+kiwisolver==1.4.2
+matplotlib==3.5.1
+numpy==1.21.6
+packaging==21.3
+Pillow==9.1.0
+pyparsing==3.0.8
+python-dateutil==2.8.2
+six==1.16.0
+tqdm==4.64.0
+typing_extensions==4.2.0
+wincertstore==0.2
+future_fstrings
+# Install bpy wheel manually from https://github.com/TylerGubala/blenderpy/releases

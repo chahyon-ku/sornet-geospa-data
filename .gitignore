@@ -1,0 +1,6 @@
+output
+__pycache__
+*.log
+
+# Blender temp files
+*.blend1

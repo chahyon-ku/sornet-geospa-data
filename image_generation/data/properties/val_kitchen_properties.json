@@ -1,0 +1,34 @@
+{
+  "shapes": {
+    "kitchen_bottle": 0,
+    "kitchen_mug": 1,
+    "kitchen_donut": 2,
+    "kitchen_milk": 3,
+    "kitchen_plate": 4,
+    "kitchen_teapot": 5,
+    "kitchen_glass": 6,
+    "kitchen_pillbottle": 7,
+    "kitchen_can": 8
+  },
+  "colors": {
+    "gray": [87, 87, 87],
+    "red": [173, 35, 35],
+    "blue": [42, 75, 215],
+    "green": [29, 105, 20],
+    "brown": [129, 74, 25],
+    "purple": [129, 38, 192],
+    "cyan": [41, 208, 208],
+    "yellow": [255, 238, 51]
+  },
+  "materials": {
+    "rubber": "Rubber",
+    "metal": "MyMetal"
+  },
+  "sizes": {
+    "one-size": 0.5
+  },
+  "contain_mat": "../relations/kitchen_rels_contain_dou.dat",
+  "support_mat": "../relations/kitchen_rels_support_dou.dat",
+  "can_contain_mat": "../relations/kitchen_rels_contain_tri.npy",
+  "can_support_mat": "../relations/kitchen_rels_support_tri.npy"
+}

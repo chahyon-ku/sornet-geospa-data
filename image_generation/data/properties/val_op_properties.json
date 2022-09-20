@@ -1,0 +1,34 @@
+{
+  "shapes": {
+    "cylinder_01_large": 3,
+    "cylinder_01": 4,
+    "cube_cylinder_01_large": 9,
+    "cube_cylinder_01": 10,
+    "rectangle_01_large": 15,
+    "rectangle_01": 16,
+    "short_cylinder_01_large": 24,
+    "short_cylinder_01": 25,
+    "cylinder_container_01_large": 27,
+    "cylinder_container_01": 28,
+    "ellipse_container_01_large": 33,
+    "ellipse_container_01": 34,
+    "ellipse_rect_cont_01_large": 36,
+    "ellipse_rect_cont_01": 37
+  },
+  "colors": {
+    "gray": [87, 87, 87],
+    "red": [173, 35, 35],
+    "blue": [42, 75, 215],
+    "green": [29, 105, 20]
+  },
+  "materials": {
+    "rubber": "Rubber"
+  },
+  "sizes": {
+    "one-size": 0.5
+  },
+  "contain_mat": "../relations/rels_dou_contain.dat",
+  "support_mat": "../relations/rels_dou_support.dat",
+  "can_contain_mat": "../relations/rels_tri_contain.npy",
+  "can_support_mat": "../relations/rels_tri_support.npy"
+}
