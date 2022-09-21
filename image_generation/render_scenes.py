@@ -53,7 +53,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--base_scene_blendfile', default='data/base_scene.blend',
                     help="Base blender file on which all scenes are based; includes " +
                          "ground plane, lights, and camera.")
-parser.add_argument('--properties_json', default='data/kitchen_properties.json',
+parser.add_argument('--properties_json', default='data/properties/mug_properties.json',
                     help="JSON file defining objects, materials, sizes, and colors. " +
                          "The \"colors\" field maps from CLEVR color names to RGB values; " +
                          "The \"sizes\" field maps from CLEVR size names to scalars used to " +
@@ -70,9 +70,9 @@ parser.add_argument('--shape_color_combos_json', default=None,
                          "for CLEVR-CoGenT.")
 
 # Settings for objects
-parser.add_argument('--min_objects', default=3, type=int,
+parser.add_argument('--min_objects', default=1, type=int,
                     help="The minimum number of objects to place in each scene")
-parser.add_argument('--max_objects', default=6, type=int,
+parser.add_argument('--max_objects', default=1, type=int,
                     help="The maximum number of objects to place in each scene")
 parser.add_argument('--min_dist', default=1.1, type=float,
                     help="The minimum allowed distance between object centers")
@@ -93,7 +93,7 @@ parser.add_argument('--start_idx', default=0, type=int,
                     help="The index at which to start for numbering rendered images. Setting " +
                          "this to non-zero values allows you to distribute rendering across " +
                          "multiple machines and recombine the results later.")
-parser.add_argument('--num_images', default=10000, type=int,
+parser.add_argument('--num_images', default=10, type=int,
                     help="The number of images to render")
 parser.add_argument('--filename_prefix', default='CLEVR',
                     help="This prefix will be prepended to the rendered images and JSON scenes")
@@ -101,15 +101,15 @@ parser.add_argument('--split', default='new',
                     help="Name of the split for which we are rendering. This will be added to " +
                          "the names of rendered images, and will also be stored in the JSON " +
                          "scene structure for each image.")
-parser.add_argument('--output_image_dir', default='../output/geospa_kitchen/',
+parser.add_argument('--output_image_dir', default='../output/mug_scenes/',
                     help="The directory where output images will be stored. It will be " +
                          "created if it does not exist.")
-parser.add_argument('--output_scene_dir', default='../output/geospa_kitchen/',
+parser.add_argument('--output_scene_dir', default='../output/mug_scenes/',
                     help="The directory where output JSON scene structures will be stored. " +
                          "It will be created if it does not exist.")
 parser.add_argument('--output_scene_file', default='../output/CLEVR_scenes.json',
                     help="Path to write a single JSON file containing all scene information")
-parser.add_argument('--output_blend_dir', default='../output/scenes',
+parser.add_argument('--output_blend_dir', default='../output/mug_scenes/',
                     help="The directory where blender scene files will be stored, if the " +
                          "user requested that these files be saved using the " +
                          "--save_blendfiles flag; in this case it will be created if it does " +
@@ -169,6 +169,7 @@ parser.add_argument('--store_depth', action="store_true",
                          "PNG file for later processing. This will make the images " +
                          "appear somewhat transparent to standard image viewers.")
 
+
 def main(args):
     num_digits = 6
     prefix = '%s_%s_' % (args.filename_prefix, args.split)
@@ -179,10 +180,8 @@ def main(args):
     scene_template = os.path.join(args.output_scene_dir, scene_template)
     blend_template = os.path.join(os.path.abspath(args.output_blend_dir), blend_template)
 
-    if not os.path.isdir(args.output_image_dir):
-        os.makedirs(args.output_image_dir)
-    if not os.path.isdir(args.output_scene_dir):
-        os.makedirs(args.output_scene_dir)
+    os.makedirs(args.output_image_dir, exist_ok=True)
+    os.makedirs(args.output_scene_dir, exist_ok=True)
     if args.save_blendfiles == 1 and not os.path.isdir(args.output_blend_dir):
         os.makedirs(args.output_blend_dir)
 
@@ -422,17 +421,7 @@ class SceneGenerator:
                     logging.debug(f'fix: {fix}\n')
                     return objects, blender_objects            
                 
-                # Place in container
-                if container is not None:
-                    cont = bpy.data.objects[container['obj_name_out']]
-                    new_blender_object = self.object_placer.place_in_container(obj_name, r, cont, fix)
-                # Place on top of supporter
-                elif supporter is not None:
-                    supp = bpy.data.objects[supporter['obj_name_out']]
-                    new_blender_object = self.object_placer.place_on_supporter(obj_name, r, supp)
-                # Place independently
-                else:
-                    new_blender_object = self.object_placer.place_independently(obj_name, r)
+                new_blender_object = self.object_placer.place_with_arbitrary_pose(obj_name, r)
                 # Done if successfully placed object
                 if new_blender_object is not None:
                     break
@@ -451,7 +440,9 @@ class SceneGenerator:
                 'material': mat_name_out,
                 'obj_name_out': new_blender_object.name,
                 '3d_coords': tuple(new_blender_object.location),
-                'rotation': new_blender_object.rotation_euler[2]/math.pi*180,  # convert to degrees
+                'rotation': [new_blender_object.rotation_euler[0]/math.pi*180,
+                             new_blender_object.rotation_euler[1]/math.pi*180,
+                             new_blender_object.rotation_euler[2]/math.pi*180], # convert to degrees
                 'pixel_coords': pixel_coords,
                 # changes by Ku for objects supported by a contained object also being contained
                 'index': len(objects),
@@ -461,6 +452,7 @@ class SceneGenerator:
                 'supported_indices': [],
                 # add depth
                 'size': size_name,
+                'size_val': r,
                 'depth': None
             }
 

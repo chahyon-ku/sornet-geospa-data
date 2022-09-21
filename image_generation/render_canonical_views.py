@@ -36,7 +36,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--base_scene_blendfile', default='data/base_scene.blend',
                     help="Base blender file on which all scenes are based; includes " +
                          "ground plane, lights, and camera.")
-parser.add_argument('--properties_json', default='data/properties/kitchen_properties.json',
+parser.add_argument('--properties_json', default='data/properties/mug_properties.json',
                     help="JSON file defining objects, materials, sizes, and colors. " +
                          "The \"colors\" field maps from CLEVR color names to RGB values; " +
                          "The \"sizes\" field maps from CLEVR size names to scalars used to " +
@@ -80,7 +80,7 @@ parser.add_argument('--split', default='',
                     help="Name of the split for which we are rendering. This will be added to " +
                          "the names of rendered images, and will also be stored in the JSON " +
                          "scene structure for each image.")
-parser.add_argument('--output_image_dir', default='../output/geospa_views/',
+parser.add_argument('--output_image_dir', default='../output/mug_views/',
                     help="The directory where output images will be stored. It will be " +
                          "created if it does not exist.")
 parser.add_argument('--license',
@@ -200,7 +200,6 @@ def add_to_h5(h5file, img_paths):
         with open(path, 'rb') as img_f:
             binary_data = img_f.read()
     imgs_grp.create_dataset(str(i), data=np.asarray(binary_data))
-
 
 
 def render_combo(shape, color_pair, material_pair, size_pair, num_images) -> list:

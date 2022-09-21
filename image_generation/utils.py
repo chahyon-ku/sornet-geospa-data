@@ -2,6 +2,7 @@
 
 import sys, random, os
 import bpy, bpy_extras
+import numpy as np
 from bpy.types import Object as BpyObj
 from mathutils.bvhtree import BVHTree
 from mathutils import Vector
@@ -95,6 +96,35 @@ class ObjectPlacer:
             return obj
         else:
             return None
+
+    def place_with_arbitrary_pose(self, shape_name: str, scale):
+        x = random.uniform(-2.0, 2.0)
+        y = random.uniform(-2.0, 2.0)
+        z = 0
+        count = 0
+        for obj in bpy.data.objects:
+            if obj.name.startswith(shape_name):
+                count += 1
+
+        filename = os.path.join(self.shape_dir, '%s.blend' % shape_name, 'Object', shape_name)
+        bpy.ops.wm.append(filename=filename)
+
+        # Give it a new name to avoid conflicts
+        new_name = '%s_%d' % (shape_name, count)
+        bpy.data.objects[shape_name].name = new_name
+
+        # Set the new object as active, then rotate, scale, and translate it
+        bpy.context.view_layer.objects.active = bpy.data.objects[new_name]
+        bpy.context.object.rotation_euler[0] = random.random() * np.pi * 2
+        bpy.context.object.rotation_euler[1] = random.random() * np.pi * 2
+        bpy.context.object.rotation_euler[2] = random.random() * np.pi * 2
+        bpy.ops.transform.resize(value=scale)
+        dz = np.sqrt(np.sum((np.array(bpy.context.view_layer.objects.active.dimensions) / 2) ** 2))
+        bpy.context.object.location = x, y, dz + z
+        bpy.context.view_layer.update()  # Update object for new location and rotation
+        obj = bpy.context.active_object
+
+        return obj
 
 
 def get_max_inside_dim(obj: BpyObj) -> float:
@@ -363,7 +393,7 @@ def new_add_object(object_dir, name, scale, loc, theta=0, zvalue=0):
     x, y = loc
     bpy.context.view_layer.objects.active = bpy.data.objects[new_name]
     bpy.context.object.rotation_euler[2] = theta / 180 * math.pi
-    bpy.ops.transform.resize(value=(scale, scale, scale))
+    bpy.ops.transform.resize(value=scale)
     dz = bpy.context.view_layer.objects.active.dimensions[2] / 2
     bpy.context.object.location = x, y, dz + zvalue
     bpy.context.view_layer.update()  # Update object for new location and rotation

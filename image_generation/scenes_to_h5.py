@@ -10,8 +10,8 @@ import h5py
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--in-dir', type=str)  # ../output/train/
-parser.add_argument('--h5-path', type=str)  # ../output/train.h5
+parser.add_argument('--in-dir', type=str, default='../output/mug_train/')
+parser.add_argument('--h5-path', type=str, default='../output/mug_train.h5')
 args = parser.parse_args()
 
 

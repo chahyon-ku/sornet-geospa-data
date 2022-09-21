@@ -1,0 +1,27 @@
+{
+  "shapes": {
+    "kitchen_mug": 0
+  },
+  "colors": {
+    "red": [173, 35, 35],
+    "green": [29, 105, 20],
+    "purple": [129, 38, 192],
+    "yellow": [255, 238, 51]
+  },
+  "materials": {
+    "rubber": "Rubber",
+    "metal": "MyMetal"
+  },
+  "sizes": {
+    "0.5-0.6": [0.5, 0.5, 0.6],
+    "0.5-0.8": [0.5, 0.5, 0.8],
+    "0.5-1.0": [0.5, 0.5, 1.0],
+    "0.75-0.75": [0.75, 0.75, 0.75],
+    "0.75-1.05": [0.75, 0.75, 1.05],
+    "0.75-1.35": [0.75, 0.75, 1.35]
+  },
+  "contain_mat": "../relations/rels_dou_contain.dat",
+  "support_mat": "../relations/rels_dou_support.dat",
+  "can_contain_mat": "../relations/rels_tri_contain.npy",
+  "can_support_mat": "../relations/rels_tri_support.npy"
+}
