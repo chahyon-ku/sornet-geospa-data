@@ -161,13 +161,15 @@ parser.add_argument('--side_camera', default=0, type=int,
                     help="The number of side cameras used.")
 parser.add_argument('--top_camera', action="store_true",
                     help="Use top camera or not, default no.",
-                    default=1)
+                    default=0)
 parser.add_argument('--skip_ori_camera', action="store_true",
                     help="Use original camera or not, default yes.")
 parser.add_argument('--store_depth', action="store_true",
                     help="Redirect the depth info into the alpha channel of the output " +
                          "PNG file for later processing. This will make the images " +
                          "appear somewhat transparent to standard image viewers.")
+#
+
 
 
 def main(args):

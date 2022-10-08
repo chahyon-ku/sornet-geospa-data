@@ -115,8 +115,8 @@ class ObjectPlacer:
 
         # Set the new object as active, then rotate, scale, and translate it
         bpy.context.view_layer.objects.active = bpy.data.objects[new_name]
-        bpy.context.object.rotation_euler[0] = random.random() * np.pi * 2
-        bpy.context.object.rotation_euler[1] = random.random() * np.pi * 2
+        # bpy.context.object.rotation_euler[0] = random.random() * np.pi * 2
+        # bpy.context.object.rotation_euler[1] = random.random() * np.pi * 2
         bpy.context.object.rotation_euler[2] = random.random() * np.pi * 2
         bpy.ops.transform.resize(value=scale)
         dz = np.sqrt(np.sum((np.array(bpy.context.view_layer.objects.active.dimensions) / 2) ** 2))
