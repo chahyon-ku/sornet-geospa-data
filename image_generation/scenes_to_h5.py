@@ -11,11 +11,12 @@ from scipy.spatial.transform.rotation import Rotation
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--in-dir', type=str, default='../output/mug_train/')
+parser.add_argument('--include_top', type=bool, default=False)
 parser.add_argument('--h5-path', type=str, default='../output/mug_train_5000.h5')
 args = parser.parse_args()
 
 
-def encode_output(f: h5py.File):
+def encode_output(f: h5py.File, include_top):
     '''
     Looks through the output image and json files, encoding them into a
     single h5 file. Takes num_scenes: the expected number of scenes which were
@@ -28,7 +29,8 @@ def encode_output(f: h5py.File):
         if dir[-4:] == 'json':
             jsn_path = os.path.join(args.in_dir, dir)
             img_path = [os.path.join(args.in_dir, dir[:-5] + 'camera_ori.png')]#,
-                        #os.path.join(args.in_dir, dir[:-5] + 'camera_top.png')]
+            if include_top:
+                img_path.append(os.path.join(args.in_dir, dir[:-5] + 'camera_top.png'))
             if not os.path.exists(jsn_path) or not os.path.exists(img_path[0]):# or not os.path.exists(img_path[1]):
                 continue
             time_since_modify = time.time() - os.path.getmtime(jsn_path)
@@ -90,7 +92,7 @@ def encode_output(f: h5py.File):
 if __name__ == '__main__':
     with h5py.File(args.h5_path, 'w') as f:
         while True:
-            encode_output(f)
+            encode_output(f, args.include_top)
             f.flush()
             time.sleep(1)
             break

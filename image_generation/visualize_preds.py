@@ -7,7 +7,9 @@ import h5py
 import numpy
 from scipy.spatial.transform.rotation import Rotation
 import utils
-import bpy
+import matplotlib.pyplot as plt
+from PIL import Image
+import cv2
 
 try:
     import bpy, bpy_extras
@@ -124,9 +126,10 @@ def parse_args():
                              "PNG file for later processing. This will make the images " +
                              "appear somewhat transparent to standard image viewers.")
 
-    parser.add_argument('--h5_path', default='../output/mug_easy_valid.h5')
-    parser.add_argument('--csv_path', default='preds/mug_easy_5000_ploss_logits.csv')
-    parser.add_argument('--out_dir', default='mug_easy_5000_pred_vis/')
+    parser.add_argument('--h5_path', default='../output/mug_rotonly_valid.h5')
+    parser.add_argument('--csv_path', default='../../cap-the-bottle/predictions/mug_rotonly.csv')
+    parser.add_argument('--temp_dir', default='temp/')
+    parser.add_argument('--out_dir', default='viz/mug_rotonly/')
 
     return parser.parse_args()
 
@@ -172,6 +175,7 @@ def init_scene_directions(scene_struct):
     scene_struct['directions']['behind'] = tuple(plane_behind)
     scene_struct['directions']['above'] = tuple(plane_up)
     scene_struct['directions']['below'] = tuple(-plane_up)
+
 
 def add_object(self, object, args):
     '''
@@ -299,9 +303,10 @@ if __name__ == '__main__':
     csv = numpy.loadtxt(args.csv_path)
 
     os.makedirs(args.out_dir, exist_ok=True)
+    os.makedirs(args.temp_dir, exist_ok=True)
     for scene_i, scene_key in enumerate(h5f):
         objects = json.loads(h5f[scene_key]['objects'][()])
-        render_scene(os.path.join(os.path.abspath(args.out_dir), scene_key + '_gt'), objects, args)
+        render_scene(os.path.join(os.path.abspath(args.temp_dir), scene_key + '_gt'), objects, args)
 
         pose_pred = csv[scene_i]
         rotation_pred = Rotation.from_quat(pose_pred[3:])
@@ -313,8 +318,19 @@ if __name__ == '__main__':
         objects[0]['rotation'][1] = euler_pred[1]
         objects[0]['rotation'][2] = euler_pred[2]
 
-        render_scene(os.path.join(os.path.abspath(args.out_dir), scene_key + '_pred'), objects, args)
+        render_scene(os.path.join(os.path.abspath(args.temp_dir), scene_key + '_pred'), objects, args)
+
+        img_gt = numpy.array(Image.open(os.path.join(os.path.abspath(args.temp_dir), scene_key + '_gt.png')))
+        img_pred = numpy.array(Image.open(os.path.join(os.path.abspath(args.temp_dir), scene_key + '_pred.png')))
+        fig, axes = plt.subplots(1, 2)
+        axes[0].imshow(img_gt)
+        axes[0].axis('off')
+        axes[0].set_title('Ground Truth')
+        axes[1].imshow(img_pred)
+        axes[1].axis('off')
+        axes[1].set_title('Predicted Pose')
+        plt.savefig(os.path.join(os.path.abspath(args.out_dir), scene_key + '.png'), bbox_inches='tight')
+        plt.close()
 
         if scene_i == 99:
             break
-

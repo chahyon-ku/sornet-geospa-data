@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, random, os
+import bpy.types
 import bpy, bpy_extras
 import numpy as np
 from bpy.types import Object as BpyObj
@@ -98,8 +99,8 @@ class ObjectPlacer:
             return None
 
     def place_with_arbitrary_pose(self, shape_name: str, scale):
-        x = random.uniform(-2.0, 2.0)
-        y = random.uniform(-2.0, 2.0)
+        x = 0#random.uniform(-2.0, 2.0)
+        y = 0#random.uniform(-2.0, 2.0)
         z = 0
         count = 0
         for obj in bpy.data.objects:
@@ -115,8 +116,8 @@ class ObjectPlacer:
 
         # Set the new object as active, then rotate, scale, and translate it
         bpy.context.view_layer.objects.active = bpy.data.objects[new_name]
-        # bpy.context.object.rotation_euler[0] = random.random() * np.pi * 2
-        # bpy.context.object.rotation_euler[1] = random.random() * np.pi * 2
+        bpy.context.object.rotation_euler[0] = random.random() * np.pi * 2
+        bpy.context.object.rotation_euler[1] = random.random() * np.pi * 2
         bpy.context.object.rotation_euler[2] = random.random() * np.pi * 2
         bpy.ops.transform.resize(value=scale)
         dz = np.sqrt(np.sum((np.array(bpy.context.view_layer.objects.active.dimensions) / 2) ** 2))
@@ -229,7 +230,7 @@ def init_scene_settings(base_scene_blendfile, material_dir, width,
         else:
             cycles_prefs = bpy.context.preferences.addons['cycles'].preferences
             cycles_prefs.get_devices()
-            cycles_prefs.compute_device_type = 'CUDA'
+            cycles_prefs.compute_device_type = 'OPTIX'
 
     # Some CYCLES-specific stuff
     bpy.data.worlds['World'].cycles.sample_as_light = True
@@ -326,10 +327,7 @@ def parse_args(parser, argv=None):
 # I wonder if there's a better way to do this?
 def delete_object(obj):
     """ Delete a specified blender object """
-    for o in bpy.data.objects:
-        o.select_set(False)
-    obj.select_set(True)
-    bpy.ops.object.delete()
+    bpy.data.objects.remove(obj, do_unlink=True)
 
 
 def get_camera_coords(cam, pos):
@@ -441,10 +439,10 @@ def add_object(objects, object_dir, name, scale, loc, theta=0, zvalue=0, sup=Fal
 
 def load_materials(material_dir):
     """
-  Load materials from a directory. We assume that the directory contains .blend
-  files with one material each. The file X.blend has a single NodeTree item named
-  X; this NodeTree item must have a "Color" input that accepts an RGBA value.
-  """
+    Load materials from a directory. We assume that the directory contains .blend
+    files with one material each. The file X.blend has a single NodeTree item named
+    X; this NodeTree item must have a "Color" input that accepts an RGBA value.
+    """
     for fn in os.listdir(material_dir):
         if not fn.endswith('.blend'): continue
         name = os.path.splitext(fn)[0]

@@ -9,11 +9,14 @@ from __future__ import print_function
 import math, sys, random, argparse, json, os, tempfile
 from datetime import datetime as dt
 from collections import Counter
+
+import OpenEXR
+import cv2
 import numpy as np
 import random
 import logging
 import utils
-
+from image_generation import nocs
 
 """
 Renders random scenes using Blender, each with with a random number of objects;
@@ -53,7 +56,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--base_scene_blendfile', default='data/base_scene.blend',
                     help="Base blender file on which all scenes are based; includes " +
                          "ground plane, lights, and camera.")
-parser.add_argument('--properties_json', default='data/properties/mug_properties.json',
+parser.add_argument('--properties_json', default='data/properties/bunny_easy_properties.json',
                     help="JSON file defining objects, materials, sizes, and colors. " +
                          "The \"colors\" field maps from CLEVR color names to RGB values; " +
                          "The \"sizes\" field maps from CLEVR size names to scalars used to " +
@@ -101,20 +104,20 @@ parser.add_argument('--split', default='new',
                     help="Name of the split for which we are rendering. This will be added to " +
                          "the names of rendered images, and will also be stored in the JSON " +
                          "scene structure for each image.")
-parser.add_argument('--output_image_dir', default='../output/mug_scenes/',
+parser.add_argument('--output_image_dir', default='../output/bunny_easy/',
                     help="The directory where output images will be stored. It will be " +
                          "created if it does not exist.")
-parser.add_argument('--output_scene_dir', default='../output/mug_scenes/',
+parser.add_argument('--output_scene_dir', default='../output/bunny_easy/',
                     help="The directory where output JSON scene structures will be stored. " +
                          "It will be created if it does not exist.")
 parser.add_argument('--output_scene_file', default='../output/CLEVR_scenes.json',
                     help="Path to write a single JSON file containing all scene information")
-parser.add_argument('--output_blend_dir', default='../output/mug_scenes/',
+parser.add_argument('--output_blend_dir', default='../output/bunny_easy/',
                     help="The directory where blender scene files will be stored, if the " +
                          "user requested that these files be saved using the " +
                          "--save_blendfiles flag; in this case it will be created if it does " +
                          "not already exist.")
-parser.add_argument('--save_blendfiles', type=int, default=0,
+parser.add_argument('--save_blendfiles', type=int, default=1,
                     help="Setting --save_blendfiles 1 will cause the blender scene file for " +
                          "each generated image to be stored in the directory specified by " +
                          "the --output_blend_dir flag. These files are not saved by default " +
@@ -161,31 +164,26 @@ parser.add_argument('--side_camera', default=0, type=int,
                     help="The number of side cameras used.")
 parser.add_argument('--top_camera', action="store_true",
                     help="Use top camera or not, default no.",
-                    default=0)
+                    default=1)
 parser.add_argument('--skip_ori_camera', action="store_true",
                     help="Use original camera or not, default yes.")
 parser.add_argument('--store_depth', action="store_true",
                     help="Redirect the depth info into the alpha channel of the output " +
                          "PNG file for later processing. This will make the images " +
                          "appear somewhat transparent to standard image viewers.")
-#
-
+parser.add_argument('--render_nocs', type=bool, default=True)
 
 
 def main(args):
-    num_digits = 6
-    prefix = '%s_%s_' % (args.filename_prefix, args.split)
-    img_template = '%s%%0%dd.exr' % (prefix, num_digits)
-    scene_template = '%s%%0%dd.json' % (prefix, num_digits)
-    blend_template = '%s%%0%dd.blend' % (prefix, num_digits)
-    img_template = os.path.join(os.path.abspath(args.output_image_dir), img_template)
-    scene_template = os.path.join(args.output_scene_dir, scene_template)
-    blend_template = os.path.join(os.path.abspath(args.output_blend_dir), blend_template)
+    template = os.path.join(os.path.abspath(args.output_image_dir), '%06d')
+    img_template = os.path.join(os.path.abspath(args.output_image_dir), template + '.png')
+    scene_template = os.path.join(args.output_scene_dir, template + '.json')
+    blend_template = os.path.join(os.path.abspath(args.output_blend_dir), template)
 
     os.makedirs(args.output_image_dir, exist_ok=True)
     os.makedirs(args.output_scene_dir, exist_ok=True)
-    if args.save_blendfiles == 1 and not os.path.isdir(args.output_blend_dir):
-        os.makedirs(args.output_blend_dir)
+    if args.save_blendfiles:
+        os.makedirs(args.output_blend_dir, exist_ok=True)
 
     all_scene_paths = []
     scene_generator = SceneGenerator(args)
@@ -193,33 +191,12 @@ def main(args):
         img_path = img_template % (i + args.start_idx)
         scene_path = scene_template % (i + args.start_idx)
         all_scene_paths.append(scene_path)
-        blend_path = None
-        if args.save_blendfiles == 1:
-            blend_path = blend_template % (i + args.start_idx)
+        blend_path = blend_template % (i + args.start_idx) if args.save_blendfiles else None
         scene_generator.render_scene(output_index=(i + args.start_idx),
                                      output_split=args.split,
                                      output_image=img_path,
                                      output_scene=scene_path,
-                                     output_blendfile=blend_path,
-                                     )
-
-    # After rendering all images, combine the JSON files for each scene into a
-    # single JSON file.
-    all_scenes = []
-    for scene_path in all_scene_paths:
-        with open(scene_path, 'r') as f:
-            all_scenes.append(json.load(f))
-    output = {
-        'info': {
-            'date': args.date,
-            'version': args.version,
-            'split': args.split,
-            'license': args.license,
-        },
-        'scenes': all_scenes
-    }
-    with open(args.output_scene_file, 'w') as f:
-        json.dump(output, f)
+                                     output_blendfile=blend_path)
 
 
 class SceneGenerator:
@@ -234,7 +211,7 @@ class SceneGenerator:
     dou_con_mat: np.ndarray
     tri_con_mat: np.ndarray
     tri_sup_mat: np.ndarray
-    
+
     def __init__(self, args):
         self.args = args
         # Load the property file
@@ -252,7 +229,7 @@ class SceneGenerator:
         if args.shape_color_combos_json is not None:
             with open(args.shape_color_combos_json, 'r') as f:
                 self.shape_color_combos = list(json.load(f).items())
-    
+
         # Load the relationship matrices from the paths in the properties file
         prop_dir = os.path.dirname(os.path.abspath(args.properties_json))
         def load_matrix(key: str):
@@ -283,19 +260,19 @@ class SceneGenerator:
     def render_scene(self,
                      output_index=0,
                      output_split='none',
-                     output_image='render.png',
+                     output_image='render',
                      output_scene='render_json',
                      output_blendfile=None
                      ):
         # Initialize the settings for scene rendering
-        utils.init_scene_settings(self.args.base_scene_blendfile, 
-                                  self.args.material_dir, 
-                                  self.args.width, 
-                                  self.args.height, 
-                                  self.args.render_tile_size, 
-                                  self.args.render_num_samples, 
-                                  self.args.render_min_bounces, 
-                                  self.args.render_max_bounces, 
+        utils.init_scene_settings(self.args.base_scene_blendfile,
+                                  self.args.material_dir,
+                                  self.args.width,
+                                  self.args.height,
+                                  self.args.render_tile_size,
+                                  self.args.render_num_samples,
+                                  self.args.render_min_bounces,
+                                  self.args.render_max_bounces,
                                   self.args.use_gpu)
         bpy.context.scene.render.filepath = output_image
         self.jitter_cam_lights()
@@ -326,13 +303,13 @@ class SceneGenerator:
             json.dump(scene_struct, f, indent=2)
 
         if output_blendfile is not None:
-            bpy.ops.wm.save_as_mainfile(filepath=output_blendfile)
+            bpy.ops.wm.save_as_mainfile(filepath=output_blendfile + '.blend')
 
     # Private functions
     ############################################################################
 
     def jitter_cam_lights(self):
-        ''' Adds jitter (random location change) to the camera and lights for 
+        ''' Adds jitter (random location change) to the camera and lights for
         lighting and camera diversity between scenes
         '''
         def rand(L):
@@ -421,8 +398,8 @@ class SceneGenerator:
                     # logging.debug(str(objects[-1]))
                     # logging.debug(f'location: {x, y, z} rotation: {theta}')
                     logging.debug(f'fix: {fix}\n')
-                    return objects, blender_objects            
-                
+                    return objects, blender_objects
+
                 new_blender_object = self.object_placer.place_with_arbitrary_pose(obj_name, r)
                 # Done if successfully placed object
                 if new_blender_object is not None:
@@ -688,38 +665,59 @@ class SceneGenerator:
         ''' Renders the current scene to PNG file(s) based on the camera
         arguments, rendering a different PNG image for each camera view.
         '''
-        args = self.args
-        bpy.context.scene.render.image_settings.file_format = 'PNG'
-        bpy.context.scene.render.image_settings.use_zbuffer = True
         bpy.data.cameras['Camera'].lens = 58.5
         bpy.data.cameras['Camera'].lens_unit = "FOV"
-        counter = 0
-        if args.store_depth:
-            utils.redirect_depth_to_alpha()
-        cur = bpy.context.scene.render.filepath
-        cur = cur[:-4] + "camera"
-        for ob in bpy.context.scene.objects:
-            if ob.type == "CAMERA":
-                if ob.name == "Camera":
-                    if args.skip_ori_camera:
-                        continue
-                    bpy.context.scene.render.filepath = cur + "_ori"
-                elif ob.name == "Camera.005":
-                    if not args.top_camera:
-                        continue
-                    bpy.context.scene.render.filepath = cur + "_top"
-                else:
-                    counter += 1
-                    if counter > args.side_camera:
-                        continue
-                    bpy.context.scene.render.filepath = cur + str(counter)
-                bpy.context.scene.camera = ob
-                while True:
-                    try:
+        # ~.png -> ~
+        cur = bpy.context.scene.render.filepath[:-4]
+        for mode in range(3):
+            if mode == 0:
+                bpy.context.scene.render.image_settings.file_format = 'PNG'
+                suffix = ''
+            elif mode == 1:
+                bpy.context.scene.cycles.samples = 1
+                bpy.context.scene.render.image_settings.file_format = 'PNG'
+                nocs.render_nocs()
+                suffix = '_nocs'
+            elif mode == 2:
+                bpy.context.scene.cycles.samples = 1
+                # depth.render_depth()
+                bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR'
+                bpy.context.scene.render.image_settings.use_zbuffer = True
+                suffix = '_depth'
+            for ob in bpy.context.scene.objects:
+                if ob.type == "CAMERA":
+                    # ['Camera', 'Camera.001', 'Camera.002', 'Camera.003', 'Camera.004', 'Camera.005']
+                    i_camera = int(ob.name.split('.')[1]) if '.' in ob.name else 0
+                    if i_camera == 0 and not self.args.skip_ori_camera:
+                        bpy.context.scene.camera = ob
+                        bpy.context.scene.render.filepath = cur + '_ori' + suffix
                         bpy.ops.render.render(write_still=True, use_viewport=True)
-                        break
-                    except Exception as e:
-                        print(e)
+                    elif 0 < i_camera <= self.args.side_camera:
+                        bpy.context.scene.camera = ob
+                        bpy.context.scene.render.filepath = cur + f'_side{i_camera}' + suffix
+                        bpy.ops.render.render(write_still=True, use_viewport=True)
+                    elif i_camera == 5 and self.args.top_camera:
+                        bpy.context.scene.camera = ob
+                        bpy.context.scene.render.filepath = cur + '_top' + suffix
+                        bpy.ops.render.render(write_still=True, use_viewport=True)
+                    else:
+                        continue
+
+                    if mode == 2:
+                        f = OpenEXR.InputFile(bpy.context.scene.render.filepath + '.exr')
+                        zs = np.frombuffer(f.channel('Z'), np.float32).reshape(self.args.height, self.args.width)
+                        f.close()
+
+                        r = np.ceil(np.log2(zs))
+                        g = zs / np.power(2, r)
+                        b = g * 256 - np.trunc(g * 256)
+                        a = b * 256 - np.trunc(b * 256)
+                        rgba = np.stack([r + 128, g * 256, b * 256, a * 256], axis=-1).astype(np.uint8)
+
+                        new_zs = 2 ** (rgba[:, :, 0] - 128) * (rgba[:, :, 1] / 256 + rgba[:, :, 2] / 256 ** 2 + rgba[:, :, 3] / 256 ** 3)
+                        cv2.imwrite(bpy.context.scene.render.filepath + '.png', rgba)
+                        os.remove(bpy.context.scene.render.filepath + '.exr')
+
 
 # Static functions
 ############################################################################
@@ -1010,4 +1008,3 @@ def render_shadeless(blender_objects, path='flat.png'):
     render_args.use_antialiasing = old_use_antialiasing
 
     return object_colors
-
